@@ -1,0 +1,27 @@
+
+安装步骤：图形界面和命令行模式方案二选一。
+
+gui方式
+
+- 添加PPA源：sudo add-apt-repository ppa:hzwhuang/ss-qt5
+
+- 更新软件列表：sudo apt-get update
+
+- 安装shadowsocks：sudo apt-get install shadowsocks-qt5
+
+- 配置shadowsocks帐号信息
+    - dash中搜索shadow，然后打开shadowsocks-qt5软件
+
+    - 在空白编辑区域点击鼠标右键，点击【添加】，然后填入正确的连接信息
+
+    - 然后点击【连接】，状态显示为已连接。
+
+cmd方式
+
+- 安装python-pip：apt-get install python-pip
+
+- 安装shadowsocks：pip install shadowsocks
+
+- 启动客户端
+sslocal -s server_ip -p server_port -l 1080 -k password -t 600 -m aes-256-cfb
+-k 密码要加"双引号"

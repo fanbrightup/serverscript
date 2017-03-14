@@ -1,0 +1,131 @@
+CentOS/Debian/Ubuntu/Windows安装部署shadowsocks - 大步's Blog大步's Blog
+
+以前装的是libuv 的版的，只是给手机用用，但是后来小米更新系统后，shadowsocks在我手机上总是闪退，goagent也闪退，唯一能用的就是fqrouter。最近shadowsocks更新，小米也更新了，网友让我试一下，结果没有闪退，所以打算重新在vps上安装shadowsocks 。
+
+shadowsocks安装分为两部分，一部分是服务器端的部署，另外一个自然是客户端部署。这里先说下服务器端的部署，即CentOS/Debian/Ubuntu/Windows安装shadowsocks服务端 。
+
+服务端(这里安装的shadowsocks是python版的)：
+为Debian / Ubuntu 安装shadowsocks服务端：
+
+apt-get install python-pip
+pip install shadowsocks
+
+为CentOs 安装shadowsocks服务端;
+
+yum install python-setuptools
+easy_install pip
+pip install shadowsocks
+
+如果vps是windows的，那么按找下面的方法装shadowsocks服务端：
+下载安装windows版的OpenSSL。linux因为自带了，所以不需要单独再安装一遍。然后和linux安装一样，要安装easy_install 和 pip，再安装shadowsocks 。有过python编程经验的，肯定直到怎么安装了。
+
+配置shadowsocks服务端：
+在 /etc目录下创建  shadowsocks.json 文件，将下面的内容放进去：
+
+{
+"server":"my_server_ip",
+"server_port":8388,
+"local_address": "127.0.0.1",
+"local_port":1080,
+"password":"mypassword",
+"timeout":300,
+"method":"aes-256-cfb",
+"fast_open": false,
+"workers": 1
+}
+
+每个字段的的解释：
+
+server   服务端监听的地址，服务端可填写 0.0.0.0
+server_port     服务器的端口(只要不与现有的端口冲突，随你填写了，我填8137)
+local_address     本地监听的地址，直接写127.0.0.1
+local_port     本地的端口，随便写，只要不冲突，我填的是1345
+password     你的shadowsocks连接密码
+timeout     超时时间，单位秒
+method     加密方式。默认是: "aes-256-cfb", 详见：see https://github.com/clowwindy/shadowsocks/wiki/Encryption
+
+workers    应该是进程数，这个我没该，大家可以改后看看进程是否增多。不理解的化，就别改了，这个参数只有unix/linux下可用。
+
+然后启动运行 shadowsocks服务器端：
+
+ssserver -c /etc/shadowsocks.json
+
+此时不要关闭终端命令操作窗口，然后到http://sourceforge.net/projects/shadowsocksgui/files/dist/    下载windows下的shadowsocks客户端，注意，下载的文件是以xx.tar.xz结尾的，一种新的压缩方法。先自己安装7zip，将其皆为为 xx.tar  ，然后随便用rar或者7zp继续解压，就得到可执行文件了。
+
+然后，将刚才设置的参数，填写到对应的位置，点击 “save”保存，然后配置浏览器的代理，将对应的本地端口改成你刚才的设置，就可以无阻碍的上网了。
+
+命令行参数：
+可以用下面的命令行参数来更改 config.json中的设置：
+
+sslocal -s server_addr -p server_port -l local_port -k password -m bf-cfb
+ssserver -p server_port -k password -m bf-cfb --workers 2
+ssserver -c /etc/shadowsocks/config.json
+
+可以使用 -h  查看所有参数。
+wiki地址：https://github.com/clowwindy/shadowsocks/wiki
+
+下面说下如何后台运行shadowsocks 。因为按照上面的方法，只要关闭终端窗口，那么shadowsocks进程也就中断了，我们没法通过shadowsocks上网了。所以，我们可以使用supervisor 来启动和管理监控shadowsocks进程。
+
+Debian下：
+运行：
+
+apt-get update
+apt-get install python-pip python-m2crypto supervisor
+pip install shadowsocks
+
+编辑 /etc/supervisor/conf.d/shadowsocks.conf  ，增加下面的内容：
+
+[program:shadowsocks]
+command=ssserver -c /etc/shadowsocks.json
+autorestart=true
+user=nobody
+
+并在 /etc/default/supervisor 文件的后面加入下面的一行内容：
+
+ulimit -n 51200
+
+接着运行命令,启动supervisor:
+
+service supervisor start
+supervisorctl reload
+
+现在supervisor启动了。
+
+supervisorctl tail -f shadowsocks stderr   //查看shadowsocks日志
+supervisorctl restart shadowsocks        //重启shadowsocks进程
+supervisorctl start shadowsocks        //启动shadowsocks进程
+supervisorctl stop shadowsocks        //停止shadowsocks进程
+
+CentOS：
+运行命令：
+
+sudo yum install python-pip supervisor
+sudo pip install shadowsocks
+
+编辑 /etc/supervisord.conf 在末尾添加:
+
+[program:shadowsocks]
+command=ssserver -c /etc/shadowsocks.json
+autorestart=true
+user=nobody
+
+sudo chkconfig --add supervisord  //添加开机启动supervisor服务守护进程
+sudo chkconfig supervisord on
+service supervisord start   //官方git上的写错了，将“supervisord”少了个d，否则提示supervisor: unrecognized  service，意思是不能识别该服务
+supervisorctl reload  //可以通过该命令重启shadowsocks。
+
+Supervisord 是后台管理服务器, 用来依据配置文件的策略管理后台守护进程, 它会随系统自动启动
+Supervisorctl 用于管理员向后台管理程序发送 启动/重启/停止 等指令;
+
+下面一步貌似可有可无，我没在iptables上加这条规则，没遇到问题：
+
+-A INPUT -m state --state NEW -m tcp -p tcp --dport your_server_port -j ACCEPT
+//其中的your_server_port表示你刚才的shadowsocks的服务器的端口。表示允许连接vps的这个端口。
+
+一切弄好之后，就可以尽情上网了。goagent反正在我这已经是废了。剩下的手机客户端配置一样，可以直接扫描电脑客户端的二维码省去手动配置的麻烦，不过唯一可惜的是手机客户端还不能到处配置，但是电脑客户端可以，就在shadowsockis目录下。
+
+fqrouter也可以使用shadowsocks的配置。
+
+安卓安装shadowsocks时候，如果不给root权限，就是 vpn模式，但是不稳定，用着用着就自动退出了。而 root模式下就没有这个问题，而且速度稳定，所以，我现在一直是给它root权限的。
+
+转载请注明：大步's Blog » CentOS/Debian/Ubuntu/Windows安装部署shadowsocks
