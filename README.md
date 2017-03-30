@@ -2,7 +2,7 @@
 代理服务器一键布置脚本
 适用于ubuntu服务器
 
-
+下载地址 https://github.com/fanbrightup/serverscript/archive/master.zip
 直接使用
 sudo  ./server.sh即可在服务器上布置这个服务
 
